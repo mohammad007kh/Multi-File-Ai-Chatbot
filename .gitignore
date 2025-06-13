@@ -1,0 +1,29 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Streamlit temporary files
+.streamlit/
+
+# Secret keys
+secrets.toml
+
+# Temp files
+*.pdf
+*.tmp
+*.log
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Python virtual environments
+.env
+.venv
+env/
+venv/
+
+# FAISS index (optional)
+*.faiss
