@@ -12,6 +12,11 @@ secrets.toml
 
 # Temp files
 *.pdf
+*.docx
+*.jpg
+*.jpeg
+*.png
+
 *.tmp
 *.log
 

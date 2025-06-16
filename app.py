@@ -1,92 +1,102 @@
-import os
-from langchain_community.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import FAISS
-from langchain.embeddings.openai import OpenAIEmbeddings
+import streamlit as st
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import ConversationalRetrievalChain
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import FAISS
 from langchain.memory import ConversationBufferMemory
-from langchain.prompts import PromptTemplate
-from langchain.schema import HumanMessage, AIMessage
 
-import streamlit as st
-from tempfile import NamedTemporaryFile
+from PyPDF2 import PdfReader
+import docx
+import pytesseract
+from PIL import Image
+import os
 
-# Set API key
-os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
+st.set_page_config(page_title="🧠 Multi-File Chatbot with Memory")
 
-st.title("📄 PDF RAG Chatbot (Guarded Responses)")
+st.title("🧠 Multi-File Chatbot with Memory")
 
-uploaded_file = st.file_uploader("Upload a PDF", type="pdf")
+# Info & Disclaimer
+with st.expander("ℹ️ About this App"):
+    st.markdown("""
+This is a demo RAG-based chatbot that can answer your questions based on uploaded PDFs, Word docs, and images.
 
-if uploaded_file:
-    with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-        tmp_file.write(uploaded_file.read())
-        tmp_path = tmp_file.name
+✅ **Your files and conversations are not stored.**  
+    """)
 
-    # Load and split
-    loader = PyPDFLoader(tmp_path)
-    docs = loader.load()
-    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-    splits = splitter.split_documents(docs)
+# Load API key from secrets
+openai_api_key = st.secrets["openai_api_key"]
 
-    # Embeddings + FAISS
-    embeddings = OpenAIEmbeddings()
-    vectorstore = FAISS.from_documents(splits, embeddings)
-    retriever = vectorstore.as_retriever()
+# File upload
+uploaded_files = st.file_uploader("Upload PDF, DOCX, or image files", type=["pdf", "docx", "png", "jpg", "jpeg"], accept_multiple_files=True)
 
-    # Session state
-    if "chat_history" not in st.session_state:
+# Session state setup
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+if "loaded_files" not in st.session_state:
+    st.session_state.loaded_files = []
+if "qa_chain" not in st.session_state:
+    st.session_state.qa_chain = None
+
+# File parsers
+def extract_text(file):
+    name = file.name.lower()
+    if name.endswith(".pdf"):
+        reader = PdfReader(file)
+        return "\n".join([page.extract_text() or "" for page in reader.pages])
+    elif name.endswith(".docx"):
+        doc = docx.Document(file)
+        return "\n".join([para.text for para in doc.paragraphs])
+    elif name.endswith((".png", ".jpg", ".jpeg")):
+        img = Image.open(file)
+        return pytesseract.image_to_string(img)
+    else:
+        return ""
+
+# Update vectorstore if new files
+if uploaded_files:
+    current_names = [f.name for f in uploaded_files]
+    if set(current_names) != set(st.session_state.loaded_files):
+        full_text = ""
+        for file in uploaded_files:
+            full_text += extract_text(file) + "\n"
+
+        embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
+        vectorstore = FAISS.from_texts([full_text], embedding=embeddings)
+        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+
+        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
+
+        qa_chain = ConversationalRetrievalChain.from_llm(
+            llm=ChatOpenAI(temperature=0, openai_api_key=openai_api_key),
+            retriever=vectorstore.as_retriever(search_kwargs={"k": 3}),
+            memory=memory,
+            return_source_documents=True,
+        )
+
+
+        st.session_state.qa_chain = qa_chain
+        st.session_state.memory = memory
         st.session_state.chat_history = []
+        st.session_state.loaded_files = current_names
 
-    # Memory
-    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-    for speaker, msg in st.session_state.chat_history:
-        if speaker == "You":
-            memory.chat_memory.add_message(HumanMessage(content=msg))
-        elif speaker == "Bot":
-            memory.chat_memory.add_message(AIMessage(content=msg))
+# Chat interface
+if st.session_state.qa_chain:
+    question = st.chat_input("Ask a question about your uploaded files...")
+    if question:
+        result = st.session_state.qa_chain({"question": question})
 
-    # LLM
-    llm = ChatOpenAI(model="gpt-4-turbo", temperature=0)
+        # Check if source docs are empty → fallback
+        if not result["source_documents"]:
+            answer = "I don’t know."
+        else:
+            answer = result["answer"]
 
-    # 🔐 Custom prompt for grounded answers
-    RAG_PROMPT_TEMPLATE = """
-You are a helpful assistant. Use only the information provided in the context to answer the user's question.
+        st.session_state.chat_history.append(("user", question))
+        st.session_state.chat_history.append(("bot", answer))
 
-If you do not know the answer based on the context, simply respond: "I don't know."
-
-Context:
-{context}
-
-Chat History:
-{chat_history}
-
-User: {question}
-Assistant:
-"""
-    prompt = PromptTemplate(
-        input_variables=["context", "chat_history", "question"],
-        template=RAG_PROMPT_TEMPLATE,
-    )
-
-    # RAG Chain with guarded behavior
-    qa = ConversationalRetrievalChain.from_llm(
-        llm=llm,
-        retriever=retriever,
-        memory=memory,
-        return_source_documents=False,
-        combine_docs_chain_kwargs={"prompt": prompt},
-    )
-
-    # Chat
-    user_input = st.text_input("Ask a question about the PDF:")
-    if user_input:
-        response = qa({"question": user_input})
-        answer = response["answer"]
-
-        st.session_state.chat_history.append(("You", user_input))
-        st.session_state.chat_history.append(("Bot", answer))
-
-    for speaker, msg in st.session_state.chat_history:
-        st.markdown(f"**{speaker}:** {msg}")
+# Display chat history
+for role, msg in st.session_state.chat_history:
+    if role == "user":
+        st.chat_message("user").write(msg)
+    else:
+        st.chat_message("assistant").write(msg)

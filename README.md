@@ -1,23 +1,54 @@
-# 📄 PDF Chatbot with Memory
+# 🧠 Multi-File Chatbot with Memory
 
-A simple chatbot that allows you to upload a PDF and ask questions about its contents. Powered by OpenAI + LangChain + Streamlit.
+This project is a **Retrieval-Augmented Generation (RAG)** chatbot that understands and responds to questions based only on the **uploaded files**. It's built using **LangChain**, **OpenAI embeddings**, and **FAISS**, and supports multiple formats like PDFs, Word documents, and images.
 
-## 🚀 Features
-- Upload any PDF
-- Ask questions about its contents
-- Memory of previous questions
-- Vector search with FAISS
+---
+
+## 🔍 Features
+
+| Feature | Description |
+|--------|-------------|
+| 📂 Multi-File Upload | Supports `.pdf`, `.docx`, `.png`, `.jpg` |
+| 🧠 Conversational Memory | Remembers previous messages |
+| 🔍 RAG System | Retrieves relevant chunks before generating answers |
+| 🖼️ OCR Support | Extracts text from image files using Tesseract |
+| 🔐 Safe & Private | All files and chats are **not stored** or analyzed |
+| 💬 Honest AI | Replies with “I don’t know” if an answer isn't found |
+
+---
 
 ## 🛠️ Tech Stack
+
 - Python
-- LangChain
-- OpenAI API
-- FAISS
 - Streamlit
+- LangChain
+- OpenAI Embeddings
+- FAISS
+- PyPDF2, python-docx, pytesseract
 
-## 🔧 Setup Instructions
+---
 
-1. **Clone the repo**
+## 🚀 Run Locally
+
 ```bash
-git clone https://github.com/mohammad007kh/Simple-File-Chatbot.git
-cd pdf-chatbot
+pip install -r requirements.txt
+```
+
+Create a `.streamlit/secrets.toml` file with your OpenAI key:
+
+```toml
+openai_api_key = "sk-..."
+```
+
+Then run:
+
+```bash
+streamlit run app.py
+```
+
+## 📢 Disclaimer
+
+> ✅ **All uploaded files and conversations are kept private and never stored.**
+
+🙏 Wish me luck on my AI career journey!
+
