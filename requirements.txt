@@ -1,8 +1,9 @@
 streamlit
 langchain
+langchain_community
 openai
-faiss-cpu
+PyPDF2
 python-docx
 pytesseract
 Pillow
-PyPDF2
+faiss-cpu
