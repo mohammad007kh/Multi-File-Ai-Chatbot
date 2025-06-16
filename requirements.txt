@@ -7,3 +7,4 @@ python-docx
 Pillow
 faiss-cpu
 requests
+tiktoken
