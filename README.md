@@ -1,57 +1,73 @@
-# 🧠 Multi-File Chatbot with Memory
+# Multi-File AI Chatbot with Memory and Document Summarization
 
-This project is a **Retrieval-Augmented Generation (RAG)** chatbot that understands and responds to questions based only on the **uploaded files**. It's built using **LangChain**, **OpenAI embeddings**, and **FAISS**, and supports multiple formats like PDFs, Word documents, and images (with OCR).
+A Streamlit app that lets you chat with the content of your uploaded files (PDF, DOCX, images) using AI, with memory and document summaries.
 
 ---
 
-## 🔍 Features
+## 🚀 Features
 
-| Feature | Description |
-|--------|-------------|
-| 📂 Multi-File Upload | Supports `.pdf`, `.docx`, `.png`, `.jpg`, `.jpeg` |
-| 🧠 Conversational Memory | Remembers previous messages in the chat |
-| 🔍 RAG System | Retrieves relevant chunks before generating answers |
-| 🖼️ OCR Support | Extracts text from image files using OCR.space API |
-| 📄 Document Summaries | Uses GPT-4 to summarize and categorize uploaded files |
-| 🔐 Safe & Private | All files and chats are **not stored** or analyzed |
-| 💬 Honest AI | Replies with “I don’t know” if an answer isn't found |
+- **Multi-file upload:** Supports PDF, DOCX, PNG, JPG, JPEG.
+- **Conversational memory:** Remembers previous chat turns for context.
+- **Retrieval-Augmented Generation (RAG):** Answers are based only on your uploaded files.
+- **OCR for images:** Extracts text from images using the OCR.space API.
+- **Document summarization:** Uses GPT-4 to summarize and categorize each uploaded file.
+- **Privacy:** No files or chat data are stored.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- Python
-- Streamlit
-- LangChain
-- OpenAI Embeddings
-- FAISS
-- PyPDF2, python-docx, Pillow
+- Python, Streamlit
+- LangChain, OpenAI, FAISS
+- PyPDF2, python-docx, Pillow, requests
 - OCR.space API
 
 ---
 
-## 🚀 Run Locally
+## ⚡ Setup
 
-```bash
-pip install -r requirements.txt
-```
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-Create a `.streamlit/secrets.toml` file with your API keys:
+2. Add your API keys to `.streamlit/secrets.toml`:
+   ```toml
+   openai_api_key = "sk-..."
+   ocr_space_api_key = "your-ocr-space-key"
+   ```
 
-```toml
-openai_api_key = "sk-..."
-ocr_space_api_key = "your-ocr-space-key"
-```
+3. Run the app:
+   ```bash
+   streamlit run app.py
+   ```
 
-Then run:
+---
 
-```bash
-streamlit run app.py
-```
+## 💡 Usage
 
-## 📢 Disclaimer
+- Upload one or more files (PDF, DOCX, PNG, JPG, JPEG).
+- The app will extract and summarize the content.
+- Ask questions in the chat box about your files.
+- View extracted text and summaries in expandable sections.
 
-> ✅ **All uploaded files and conversations are kept private and never stored.**
+---
 
-🙏 Wish me luck on my AI career journey!
+## ❓ Troubleshooting
+
+- **API Key errors:** Make sure your keys are correct and active.
+- **OCR issues:** Some images may not be readable; try higher quality scans.
+- **File size:** Very large files may take longer to process.
+
+---
+
+## 🔒 Privacy
+
+> All files and chat data are processed in-memory and never stored.
+
+---
+
+## 📄 License
+
+MIT License
 
