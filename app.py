@@ -97,11 +97,12 @@ if uploaded:
         for filename, doc_text in extracted_texts.items():
             chunks = splitter.split_text(doc_text)
             summary = describe_document(doc_text, filename)
-            for chunk in chunks:
+            for i, chunk in enumerate(chunks):
                 split_texts.append(chunk)
                 metadatas.append({
                     "source": filename,
-                    "summary": summary
+                    "summary": summary,
+                    "chunk": i
                 })
 
         # Vectorstore
@@ -122,7 +123,7 @@ if uploaded:
         # Show indexed preview
         st.write("Indexed content preview:")
         for i, (chunk, meta) in enumerate(zip(split_texts, metadatas)):
-            st.markdown(f"**{meta['source']} - Chunk {i+1}:**")
+            st.markdown(f"**{meta['source']} - Chunk {meta['chunk']+1}:**")
             st.code(chunk, language="markdown")
             st.caption(f"Summary: {meta['summary']}")
 
