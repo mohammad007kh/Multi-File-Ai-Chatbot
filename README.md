@@ -10,7 +10,9 @@ A Streamlit app that lets you chat with the content of your uploaded files (PDF,
 - **Conversational memory:** Remembers previous chat turns for context.
 - **Retrieval-Augmented Generation (RAG):** Answers are based only on your uploaded files.
 - **OCR for images:** Extracts text from images using the OCR.space API.
-- **Document summarization:** Uses GPT-4 to summarize and categorize each uploaded file.
+- **Document summarization for images:** Uses GPT-3.5-turbo to summarize and categorize each uploaded image file (not PDFs or DOCX).
+- **Chunk filtering:** Ignores text chunks shorter than 50 characters for better relevance.
+- **Chunk indexing:** Each chunk is indexed and shown in the preview for clarity.
 - **Privacy:** No files or chat data are stored.
 
 ---
@@ -18,7 +20,7 @@ A Streamlit app that lets you chat with the content of your uploaded files (PDF,
 ## 🛠️ Tech Stack
 
 - Python, Streamlit
-- LangChain, OpenAI, FAISS
+- LangChain, OpenAI (GPT-3.5-turbo), FAISS
 - PyPDF2, python-docx, Pillow, requests
 - OCR.space API
 
@@ -47,9 +49,9 @@ A Streamlit app that lets you chat with the content of your uploaded files (PDF,
 ## 💡 Usage
 
 - Upload one or more files (PDF, DOCX, PNG, JPG, JPEG).
-- The app will extract and summarize the content.
+- The app will extract and summarize the content of images (not PDFs or DOCX).
 - Ask questions in the chat box about your files.
-- View extracted text and summaries in expandable sections.
+- View extracted text and summaries in expandable sections, with chunk indices.
 
 ---
 

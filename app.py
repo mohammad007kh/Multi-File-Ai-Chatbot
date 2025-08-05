@@ -1,6 +1,5 @@
 import streamlit as st
 import requests
-import openai
 from openai import OpenAI
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import ConversationalRetrievalChain
@@ -50,21 +49,21 @@ def ocr_space_text(img_bytes):
 def extract_text(f):
     if f.name.lower().endswith(".pdf"):
         reader = PdfReader(f)
-        return "\n".join(p.extract_text() or "" for p in reader.pages)
+        return "\n".join(p.extract_text() or "" for p in reader.pages), False
     if f.name.lower().endswith(".docx"):
         doc = docx.Document(f)
-        return "\n".join(p.text for p in doc.paragraphs)
+        return "\n".join(p.text for p in doc.paragraphs), False
     if f.name.lower().endswith((".png", "jpg", "jpeg")):
-        return ocr_space_text(f)
-    return ""
+        return ocr_space_text(f), True
+    return "", False
 
 # --- Use OpenAI to describe document ---
 def describe_document(text, filename):
     client = OpenAI(api_key=openai_key)
-    prompt = f"Describe the content of the following document named '{filename}'. Give a short summary and possible categories:\n\n{text[:2000]}"
+    prompt = f"Describe the content of the following document named '{filename}'. Give a short summary and possible categories:\n\n{text[:1500]}"
     try:
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             temperature=0
         )
@@ -78,9 +77,12 @@ if uploaded:
     names = [f.name for f in uploaded]
     if set(names) != set(st.session_state.loaded_files):
         extracted_texts = {}
+        ocr_flags = {}
+
         for f in uploaded:
-            text = extract_text(f)
+            text, is_ocr = extract_text(f)
             extracted_texts[f.name] = text
+            ocr_flags[f.name] = is_ocr
 
         # Display previews
         for filename, text in extracted_texts.items():
@@ -96,8 +98,10 @@ if uploaded:
 
         for filename, doc_text in extracted_texts.items():
             chunks = splitter.split_text(doc_text)
-            summary = describe_document(doc_text, filename)
+            summary = describe_document(doc_text, filename) if ocr_flags.get(filename) else ""
             for i, chunk in enumerate(chunks):
+                if len(chunk.strip()) < 50:
+                    continue
                 split_texts.append(chunk)
                 metadatas.append({
                     "source": filename,
@@ -125,7 +129,8 @@ if uploaded:
         for i, (chunk, meta) in enumerate(zip(split_texts, metadatas)):
             st.markdown(f"**{meta['source']} - Chunk {meta['chunk']+1}:**")
             st.code(chunk, language="markdown")
-            st.caption(f"Summary: {meta['summary']}")
+            if meta["summary"]:
+                st.caption(f"Summary: {meta['summary']}")
 
 # --- Chat Interface ---
 qa = st.session_state.qa_chain
