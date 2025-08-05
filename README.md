@@ -63,6 +63,17 @@ A Streamlit app that lets you chat with the content of your uploaded files (PDF,
 
 ---
 
+## 🧪 Testing
+
+Automated unit tests are provided in `test_app.py` for core functions (file extraction and document summarization).
+
+To run the tests:
+```bash
+python -m unittest test_app.py
+```
+
+---
+
 ## 🔒 Privacy
 
 > All files and chat data are processed in-memory and never stored.
@@ -72,4 +83,14 @@ A Streamlit app that lets you chat with the content of your uploaded files (PDF,
 ## 📄 License
 
 MIT License
+
+---
+
+## 🙏 Thanks & About
+
+This script is part of a larger project focused on AI-powered document understanding and conversational interfaces.
+
+Thank you for checking out this repository and exploring its features!
+
+Made with ❤️ by mohammad007kh.
 
