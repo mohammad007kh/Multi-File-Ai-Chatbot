@@ -1,23 +1,24 @@
 import streamlit as st
 import requests
 from openai import OpenAI
-from langchain.chat_models import ChatOpenAI
-from langchain.chains import ConversationalRetrievalChain
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain.memory import ConversationBufferMemory
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from PyPDF2 import PdfReader
 import docx
 from PIL import Image
+
+# LangGraph imports
+from langgraph.graph import StateGraph, MessagesState, END
+from langgraph.checkpoint.memory import MemorySaver
 
 # --- Page setup ---
 st.set_page_config(page_title="🧠 Multi-File Chatbot with Memory")
 st.title("🧠 Multi-File Chatbot with Memory")
 with st.expander("ℹ️ About this App"):
     st.markdown("""
-Upload PDFs, Word docs, or images (OCR via OCR.space) and chat about their content.
-✅ Files & chats are never stored.
+Upload PDFs, Word docs, or images (OCR via OCR.space) and chat about their content.  
+✅ Files & chats are never stored (memory is in RAM only, wiped on restart).
 """)
 
 # --- Load secrets ---
@@ -28,9 +29,9 @@ ocr_space_key = st.secrets["ocr_space_api_key"]
 uploaded = st.file_uploader("Upload files", type=["pdf", "docx", "png", "jpg", "jpeg"], accept_multiple_files=True)
 
 # --- Session state ---
-st.session_state.setdefault("chat_history", [])
 st.session_state.setdefault("loaded_files", [])
-st.session_state.setdefault("qa_chain", None)
+st.session_state.setdefault("graph", None)
+st.session_state.setdefault("thread_id", "default")  # all users share a session in Streamlit
 
 # --- OCR helper ---
 def ocr_space_text(img_bytes):
@@ -63,7 +64,7 @@ def describe_document(text, filename):
     prompt = f"Describe the content of the following document named '{filename}'. Give a short summary and possible categories:\n\n{text[:1500]}"
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0
         )
@@ -93,7 +94,10 @@ if uploaded:
                     st.write("_No text extracted or OCR failed._")
 
         # Split text and add metadata
-        splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=500,
+            chunk_overlap=50
+        )
         split_texts, metadatas = [], []
 
         for filename, doc_text in extracted_texts.items():
@@ -113,16 +117,29 @@ if uploaded:
         embeddings = OpenAIEmbeddings(openai_api_key=openai_key)
         vs = FAISS.from_texts(split_texts, embeddings, metadatas=metadatas)
 
-        # Memory + chain
-        mem = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
-        qa = ConversationalRetrievalChain.from_llm(
-            llm=ChatOpenAI(api_key=openai_key, temperature=0),
-            retriever=vs.as_retriever(search_kwargs={"k": 5}),
-            memory=mem,
-            return_source_documents=True
-        )
+        # --- LangGraph setup ---
+        llm = ChatOpenAI(model="gpt-4o-mini", api_key=openai_key)
 
-        st.session_state.update(qa_chain=qa, memory=mem, chat_history=[], loaded_files=names)
+        def chatbot(state: MessagesState):
+            """One chatbot step: take messages, run LLM with retrieval"""
+            question = state["messages"][-1].content
+            retriever = vs.as_retriever(search_kwargs={"k": 5})
+            docs = retriever.get_relevant_documents(question)
+            context = "\n\n".join(d.page_content for d in docs)
+            prompt = f"Context:\n{context}\n\nQuestion: {question}"
+            answer = llm.invoke(prompt)
+            return {"messages": [answer]}
+
+        builder = StateGraph(MessagesState)
+        builder.add_node("chatbot", chatbot)
+        builder.set_entry_point("chatbot")
+        builder.add_edge("chatbot", END)
+
+        # In-memory only (no persistence)
+        checkpointer = MemorySaver()
+        graph = builder.compile(checkpointer=checkpointer)
+
+        st.session_state.update(graph=graph, loaded_files=names)
 
         # Show indexed preview
         st.write("Indexed content preview:")
@@ -133,14 +150,12 @@ if uploaded:
                 st.caption(f"Summary: {meta['summary']}")
 
 # --- Chat Interface ---
-qa = st.session_state.qa_chain
-if qa:
+graph = st.session_state.graph
+if graph:
     query = st.chat_input("Ask a question…")
     if query:
-        res = qa({"question": query})
-        ans = "I don’t know." if not res["source_documents"] else res["answer"]
-        st.session_state.chat_history += [("user", query), ("assistant", ans)]
-
-# --- Display chat history ---
-for role, msg in st.session_state.chat_history:
-    st.chat_message(role).write(msg)
+        config = {"configurable": {"thread_id": st.session_state.thread_id}}
+        res = graph.invoke({"messages": [("user", query)]}, config=config)
+        answer = res["messages"][-1].content
+        st.chat_message("user").write(query)
+        st.chat_message("assistant").write(answer)
