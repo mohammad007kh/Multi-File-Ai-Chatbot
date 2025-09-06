@@ -11,6 +11,7 @@ from PIL import Image
 # LangGraph imports
 from langgraph.graph import StateGraph, MessagesState, END
 from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 # --- Page setup ---
 st.set_page_config(page_title="🧠 Multi-File Chatbot with Memory")
@@ -28,10 +29,15 @@ ocr_space_key = st.secrets["ocr_space_api_key"]
 # --- Upload section ---
 uploaded = st.file_uploader("Upload files", type=["pdf", "docx", "png", "jpg", "jpeg"], accept_multiple_files=True)
 
-# --- Session state ---
+## --- Session state ---
 st.session_state.setdefault("loaded_files", [])
 st.session_state.setdefault("graph", None)
 st.session_state.setdefault("thread_id", "default")  # all users share a session in Streamlit
+# Store all chat messages for memory (role-based dicts)
+if "messages" not in st.session_state:
+    st.session_state["messages"] = [
+        SystemMessage(content="You are a helpful assistant. Answer questions based on the user's uploaded files and previous conversation.")
+    ]
 
 # --- OCR helper ---
 def ocr_space_text(img_bytes):
@@ -122,12 +128,21 @@ if uploaded:
 
         def chatbot(state: MessagesState):
             """One chatbot step: take messages, run LLM with retrieval"""
-            question = state["messages"][-1].content
+            messages = state["messages"]
+            question = messages[-1].content
             retriever = vs.as_retriever(search_kwargs={"k": 5})
             docs = retriever.get_relevant_documents(question)
             context = "\n\n".join(d.page_content for d in docs)
-            prompt = f"Context:\n{context}\n\nQuestion: {question}"
-            answer = llm.invoke(prompt)
+            
+            # Create a new prompt that includes context and passes all messages to LLM
+            context_message = f"Document context:\n{context}\n\n"
+            
+            # Create messages for the LLM including context
+            llm_messages = [messages[0]]  # System message
+            llm_messages.append(HumanMessage(content=context_message + "Now I'll share our conversation:"))
+            llm_messages.extend(messages[1:])  # Add all conversation messages
+            
+            answer = llm.invoke(llm_messages)
             return {"messages": [answer]}
 
         builder = StateGraph(MessagesState)
@@ -152,10 +167,20 @@ if uploaded:
 # --- Chat Interface ---
 graph = st.session_state.graph
 if graph:
+    # Display previous chat history
+    for msg in st.session_state["messages"][1:]:  # Skip system message
+        if isinstance(msg, HumanMessage):
+            st.chat_message("user").write(msg.content)
+        elif isinstance(msg, AIMessage):
+            st.chat_message("assistant").write(msg.content)
+    
     query = st.chat_input("Ask a question…")
     if query:
+        # Add user message to history as LangChain message
+        st.session_state["messages"].append(HumanMessage(content=query))
         config = {"configurable": {"thread_id": st.session_state.thread_id}}
-        res = graph.invoke({"messages": [("user", query)]}, config=config)
+        # Pass full message history to graph
+        res = graph.invoke({"messages": st.session_state["messages"]}, config=config)
         answer = res["messages"][-1].content
-        st.chat_message("user").write(query)
-        st.chat_message("assistant").write(answer)
+        st.session_state["messages"].append(AIMessage(content=answer))
+        st.rerun()  # Refresh to show the new messages
