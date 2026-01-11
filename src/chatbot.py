@@ -12,7 +12,7 @@ def create_chatbot_graph(vectorstore):
         messages = state["messages"]
         question = messages[-1].content
         retriever = vectorstore.as_retriever(search_kwargs={"k": RETRIEVER_K})
-        docs = retriever.get_relevant_documents(question)
+        docs = retriever.invoke(question)
         context = "\n\n".join(d.page_content for d in docs)
         
         # Create a new prompt that includes context and passes all messages to LLM
