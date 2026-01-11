@@ -15,9 +15,9 @@ A Streamlit app that lets you chat with the content of your uploaded files (PDF,
 - **Chunk filtering:** Ignores text chunks shorter than 50 characters for better relevance.
 - **Chunk indexing:** Each chunk is indexed and shown in the preview for clarity.
 - **Privacy:** No files or chat data are stored.
+- **Modular architecture:** Code is organized into reusable modules for easy maintenance and extension.
 
 ---
-
 
 ## 🛠️ Tech Stack
 
@@ -25,6 +25,27 @@ A Streamlit app that lets you chat with the content of your uploaded files (PDF,
 - LangChain, LangGraph, OpenAI (GPT-4o-mini), FAISS
 - PyPDF2, python-docx, Pillow, requests
 - OCR.space API
+
+---
+
+## 📁 Project Structure
+
+```
+.
+├── app.py                 # Main Streamlit application
+├── src/                   # Source code modules
+│   ├── __init__.py
+│   ├── chatbot.py         # LangGraph chatbot setup
+│   ├── config.py          # Configuration and constants
+│   ├── file_processing.py # Text extraction and OCR
+│   ├── ui.py              # Streamlit UI components
+│   └── vectorstore.py     # FAISS vectorstore creation
+├── test_app.py            # Unit tests
+├── requirements.txt       # Python dependencies
+├── README.md              # This file
+├── LICENSE                # MIT License
+└── data/                  # Sample data files
+```
 
 ---
 
@@ -93,7 +114,7 @@ MIT License
 
 ## 🙏 Thanks & About
 
-This script is part of a larger project focused on AI-powered document understanding and conversational interfaces. Now with LangGraph for advanced conversational memory and flow.
+This script is part of a larger project focused on AI-powered document understanding and conversational interfaces. Now with LangGraph for advanced conversational memory and flow, and a modular architecture for better code organization.
 
 Thank you for checking out this repository and exploring its features!
 

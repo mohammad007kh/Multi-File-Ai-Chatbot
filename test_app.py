@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 from io import BytesIO
 import docx
 from PyPDF2 import PdfWriter
-from app import extract_text, ocr_space_text, describe_document
+from src.file_processing import extract_text, ocr_space_text, describe_document
 
 class TestAppFunctions(unittest.TestCase):
     def test_extract_text_pdf(self):
@@ -30,7 +30,7 @@ class TestAppFunctions(unittest.TestCase):
         self.assertIn("Hello World", text)
         self.assertFalse(is_ocr)
 
-    @patch('app.requests.post')
+    @patch('src.file_processing.requests.post')
     def test_extract_text_image(self, mock_post):
         # Mock OCR.space response
         mock_post.return_value = MagicMock(
@@ -43,7 +43,7 @@ class TestAppFunctions(unittest.TestCase):
         self.assertEqual(text, "Image text")
         self.assertTrue(is_ocr)
 
-    @patch('app.OpenAI')
+    @patch('src.file_processing.OpenAI')
     def test_describe_document(self, mock_openai):
         # Mock OpenAI response
         mock_client = MagicMock()
